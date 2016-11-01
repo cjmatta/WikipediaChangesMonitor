@@ -1,16 +1,16 @@
 package org.cmatta.kafka.streams.wikipedia;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.Serde;
+import io.confluent.examples.streams.utils.SpecificAvroDeserializer;
+import io.confluent.examples.streams.utils.SpecificAvroSerde;
+import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.Serializer;
-import org.apache.kafka.connect.json.JsonDeserializer;
-import org.apache.kafka.connect.json.JsonSerializer;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.cmatta.kafka.connect.irc.Message;
 
 import java.util.Properties;
 
@@ -23,18 +23,19 @@ public class MessageMonitor {
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wikipedia-monitor");
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9092");
     props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "zookeeper:2181");
-
-
-    final Serializer<JsonNode> jsonSerializer = new JsonSerializer();
-    final Deserializer<JsonNode> jsonDeserializer = new JsonDeserializer();
-    final Serde<JsonNode> jsonSerde = Serdes.serdeFrom(jsonSerializer, jsonDeserializer);
+    props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://schemaregistry:8081");
+    props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+    props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
     KStreamBuilder builder = new KStreamBuilder();
 
-    KStream<JsonNode, JsonNode> wikipediaRaw = builder.stream(jsonSerde, jsonSerde, "wikipedia");
-    wikipediaRaw.map(WikipediaMessageParser::getRawMessage).to(Serdes.String(), Serdes.String(), "wikipedia-message");
+    KStream<String, Message> wikipediaRaw = builder.stream("wikipedia");
+    KStream<String, String> justMessages = wikipediaRaw.mapValues((m) -> m.getMessage());
+    justMessages.to(Serdes.String(), Serdes.String(), "just-messages");
+    wikipediaRaw.map(WikipediaMessageParser::parseMessage)
+        .filter((k, v) -> k != null && v != null).to("wikipedia-parsed-messages");
 
-    wikipediaRaw.map(WikipediaMessageParser::parseMessage).to(Serdes.String(), wikipediaChangeSerializer, "wikipedia-parsed");
     final KafkaStreams streams = new KafkaStreams(builder, props);
     streams.start();
 

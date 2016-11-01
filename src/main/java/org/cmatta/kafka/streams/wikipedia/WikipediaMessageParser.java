@@ -1,8 +1,8 @@
 package org.cmatta.kafka.streams.wikipedia;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.kafka.common.errors.IllegalGenerationException;
 import org.apache.kafka.streams.KeyValue;
+import org.cmatta.kafka.connect.irc.Message;
+import org.cmatta.kafka.streams.wikipedia.avro.WikipediaChange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,34 +15,45 @@ import java.util.regex.Pattern;
  */
 public class WikipediaMessageParser {
   private static Logger log = LoggerFactory.getLogger(WikipediaMessageParser.class);
-  public static KeyValue<String, String> getRawMessage(JsonNode key, JsonNode value) {
-    try {
-      String channel = key.get("payload").get("channel").asText();
-      String message = value.get("payload").get("message").asText();
-      return new KeyValue<>(channel, message);
-    } catch (IllegalGenerationException e) {
-      log.error(e.getMessage());
-      return new KeyValue<>(null, null);
-    }
+
+  public static KeyValue<String, String> getRawMessage(String key, Message message) {
+    return new KeyValue<String, String>(message.getChannel(), message.getMessage());
+
   }
 
-  public static KeyValue<String, WikipediaChange> parseMessage(JsonNode key, JsonNode value) {
-    String rawMessage = value.get("payload").get("message").asText();
-    Date createdAt = new Date(Long.parseLong(value.get("payload").get("createdat").asText()));
+  public static KeyValue<String, WikipediaChange> parseMessage(String channel, Message message) {
+    try {
+      WikipediaChange change = parseMessage(message.getMessage());
+      change.setCreatedat(message.getCreatedat());
+      return new KeyValue<String, WikipediaChange>(change.getWikipage(), change);
+    } catch (IllegalStateException e) {
+      return new KeyValue<>(null, null);
+    }
 
-    String pattern ="\\[\\[(.*)\\]\\]\\s(.*)\\s(.*)\\s\\*\\s(.*)\\s\\*\\s\\(\\+?(.\\d*)\\)\\s(.*)";
+
+  }
+
+  public static WikipediaChange parseMessage(String message) {
+
+    String pattern ="\\[\\[(.*)\\]\\]\\s(.*)\\s(.*)\\s\\*\\s(.*)\\s\\*\\s\\(([\\+|\\-].\\d*)\\)\\s?(.*)?";
     Pattern wikiPattern = Pattern.compile(pattern);
-    Matcher matcher = wikiPattern.matcher(rawMessage);
+    Matcher matcher = wikiPattern.matcher(message);
 
-    String wikiPage = matcher.group(1);
-    String flags = matcher.group(2);
-    String diffUrl = matcher.group(3);
-    String userName = matcher.group(4);
-    int byteChange = Integer.parseInt(matcher.group(5));
-    String commitMessage = matcher.group(6);
+    matcher.matches();
+    WikipediaChange change = new WikipediaChange();
 
-    WikipediaChange change = new WikipediaChange(createdAt, wikiPage, flags, diffUrl, userName, byteChange, commitMessage);
+    change.setWikipage(matcher.group(1));
+    change.setDiffurl(matcher.group(3));
+    change.setUsername(matcher.group(4));
+    change.setBytechange(Integer.parseInt(matcher.group(5)));
+    change.setCommitmessage(matcher.group(6));
+//    Set Flags
+    change.setIsnew(matcher.group(2).contains("N"));
+    change.setIsminor(matcher.group(2).contains("M"));
+    change.setIsunpatrolled(matcher.group(2).contains("!"));
+    change.setIsbot(matcher.group(2).contains("B"));
 
-    return new KeyValue<String, WikipediaChange>(wikiPage, change);
+    return change;
+
   }
 }
