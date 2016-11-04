@@ -114,6 +114,11 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
         </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>monitoring-interceptors</artifactId>
+            <version>${confluent.version}</version>
+        </dependency>
     </dependencies>
 
 
