@@ -4,12 +4,15 @@ import io.confluent.examples.streams.utils.SpecificAvroDeserializer;
 import io.confluent.examples.streams.utils.SpecificAvroSerde;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.cmatta.kafka.connect.irc.Message;
 
 import java.util.Properties;
@@ -27,15 +30,17 @@ public class MessageMonitor {
     props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    props.put("consumer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor");
+    props.put("producer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor");
 
     KStreamBuilder builder = new KStreamBuilder();
 
-    KStream<String, Message> wikipediaRaw = builder.stream("wikipedia");
-    KStream<String, String> justMessages = wikipediaRaw.mapValues((m) -> m.getMessage());
-    justMessages.to(Serdes.String(), Serdes.String(), "just-messages");
-    wikipediaRaw.map(WikipediaMessageParser::parseMessage)
-        .filter((k, v) -> k != null && v != null).to("wikipedia-parsed-messages");
+    KStream<String, Message> wikipediaRaw = builder.stream("wikipedia.raw");
 
+    wikipediaRaw.map(WikipediaMessageParser::parseMessage)
+        .filter((k, v) -> k != null && v != null).to("wikipedia.parsed");
+
+//    TODO Add KTable example code
     final KafkaStreams streams = new KafkaStreams(builder, props);
     streams.start();
 
