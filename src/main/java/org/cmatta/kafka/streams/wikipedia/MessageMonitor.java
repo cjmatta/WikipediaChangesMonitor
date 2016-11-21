@@ -1,19 +1,16 @@
 package org.cmatta.kafka.streams.wikipedia;
 
-import io.confluent.examples.streams.utils.SpecificAvroDeserializer;
 import io.confluent.examples.streams.utils.SpecificAvroSerde;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
-import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
+import org.apache.kafka.streams.kstream.*;
+
 import org.cmatta.kafka.connect.irc.Message;
+import org.cmatta.kafka.streams.wikipedia.avro.WikipediaChange;
 
 import java.util.Properties;
 
@@ -37,12 +34,18 @@ public class MessageMonitor {
 
     KStream<String, Message> wikipediaRaw = builder.stream("wikipedia.raw");
 
-    wikipediaRaw.map(WikipediaMessageParser::parseMessage)
-        .filter((k, v) -> k != null && v != null).to("wikipedia.parsed");
+    KStream<String, WikipediaChange> wikipediaParsed = wikipediaRaw.map(WikipediaMessageParser::parseMessage)
+        .filter((k, v) -> k != null && v != null);
 
-//    TODO Add KTable example code
-    final KafkaStreams streams = new KafkaStreams(builder, props);
-    streams.start();
+    wikipediaParsed.to("wikipedia.parsed");
+
+//    Top Editors
+//    KTable<Windowed<String>, Long> editorCounts = wikipediaParsed.mapValues(v -> {
+//          return new KeyValue<>(v.getUsername(), 1);
+//        }).groupByKey().count(TimeWindows.of(60*60*24*1000L).advanceBy(60*1000L), "EditorCountsStore");
+//
+//    final KafkaStreams streams = new KafkaStreams(builder, props);
+//    streams.start();
 
     // Add shutdown hook to respond to SIGTERM and gracefully close Kafka Streams
     Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
