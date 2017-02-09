@@ -41,7 +41,7 @@
     },
     {
       "name": "commitmessage",
-      "type": "string"
+      "type": "string",
       "default": null
     }
   ]
