@@ -47,9 +47,8 @@ public class WikipediaMessageParser {
     change.setDiffurl(matcher.group(3));
     change.setUsername(matcher.group(4));
     change.setBytechange(Integer.parseInt(matcher.group(5)));
-    if(!Objects.equals(matcher.group(6), "")) {
-      change.setCommitmessage(matcher.group(6));
-    }
+    change.setCommitmessage(matcher.group(6));
+
 
 //    Set Flags
     change.setIsnew(matcher.group(2).contains("N"));
