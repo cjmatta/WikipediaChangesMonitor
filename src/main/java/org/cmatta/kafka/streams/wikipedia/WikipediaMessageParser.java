@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,7 +47,10 @@ public class WikipediaMessageParser {
     change.setDiffurl(matcher.group(3));
     change.setUsername(matcher.group(4));
     change.setBytechange(Integer.parseInt(matcher.group(5)));
-    change.setCommitmessage(matcher.group(6));
+    if(!Objects.equals(matcher.group(6), "")) {
+      change.setCommitmessage(matcher.group(6));
+    }
+
 //    Set Flags
     change.setIsnew(matcher.group(2).contains("N"));
     change.setIsminor(matcher.group(2).contains("M"));
