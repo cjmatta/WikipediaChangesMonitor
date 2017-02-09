@@ -35,7 +35,7 @@ public class WikipediaMessageParser {
 
   public static WikipediaChange parseMessage(String message) {
 
-    String pattern ="\\[\\[(.*)\\]\\]\\s(.*)\\s(.*)\\s\\*\\s(.*)\\s\\*\\s\\(([\\+|\\-].\\d*)\\)\\s?(.*)?";
+    String pattern ="\\[\\[(.*)\\]\\]\\s(.*)\\s(.*)\\s\\*\\s(.*)\\s\\*\\s\\(([\\+|\\-].\\d*)\\)\\s?(.*)?$";
     Pattern wikiPattern = Pattern.compile(pattern);
     Matcher matcher = wikiPattern.matcher(message);
 

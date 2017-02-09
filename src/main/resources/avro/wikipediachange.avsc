@@ -3,6 +3,9 @@
   "type": "record",
   "name": "WikipediaChange",
   "fields": [
+    { "name": "channel",
+      "type": "string"
+    },
     {
       "name": "createdat",
       "type": "long"
@@ -41,7 +44,8 @@
     },
     {
       "name": "commitmessage",
-      "type": "string"
+      "type": "string",
+      "default": null
     }
   ]
 }

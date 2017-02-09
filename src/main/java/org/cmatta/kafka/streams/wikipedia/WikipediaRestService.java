@@ -43,6 +43,17 @@ public class WikipediaRestService {
       return rangeForKeyValueStore(storeName, ReadOnlyKeyValueStore::all);
     }
 
+    /**
+   * Return Hello information
+     * using this to learn
+   */
+  @GET()
+  @Path("/hello")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Hello getRoot() {
+    return new Hello();
+  }
+
   /**
    * Get the metadata for all of the instances of this Kafka Streams application
    * @return List of {@link HostStoreInfo}
@@ -82,6 +93,25 @@ public class WikipediaRestService {
     return metadataService.streamsMetadataForStoreAndKey(store, key, new StringSerializer());
   }
 
+  private class Hello {
+    private String message;
+    public Hello() {
+      this.message = "Hello World";
+    };
+
+    public String getMessage() { return this.message; }
+
+    public void setMessage(String message) {
+      this.message = message;
+    }
+
+    @Override
+    public String toString() {
+      return this.getMessage();
+    }
+
+
+  }
 
   private List<KeyValueBean> rangeForKeyValueStore(final String storeName,
                                                      final Function<ReadOnlyKeyValueStore<String, Long>,

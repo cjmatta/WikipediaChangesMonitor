@@ -32,7 +32,7 @@ public class InteractiveQueries {
     streamsProps.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://schemaregistry:8081");
     streamsProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     streamsProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
-    streamsProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    streamsProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
     streamsProps.put("consumer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor");
     streamsProps.put("producer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor");
 
@@ -61,6 +61,7 @@ public class InteractiveQueries {
   static KafkaStreams createStreams(final Properties streamsConfiguration) {
     final Serde<String> stringSerde = Serdes.String();
     final Serde<Long> longSerde = Serdes.Long();
+
     final Serde<Windowed<String>> windowedStringSerde = new WindowedSerde<>(stringSerde);
 
     KStreamBuilder builder = new KStreamBuilder();
@@ -75,4 +76,5 @@ public class InteractiveQueries {
 
     return new KafkaStreams(builder, streamsConfiguration);
   }
+
 }

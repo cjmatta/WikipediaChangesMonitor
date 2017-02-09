@@ -41,7 +41,7 @@ public class MessageMonitor {
     KStream<String, WikipediaChange> wikipediaParsed = wikipediaRaw.map(WikipediaMessageParser::parseMessage)
         .filter((k, v) -> k != null && v != null);
 
-    wikipediaParsed.to("wikipedia.parsed");
+      wikipediaParsed.to("wikipedia.parsed");
 
 
     final KafkaStreams streams = new KafkaStreams(builder, props);
