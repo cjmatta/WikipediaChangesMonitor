@@ -23,9 +23,21 @@ import java.util.Properties;
 public class MessageMonitor {
   public static void main(String[] args) throws Exception {
     Properties props = new Properties();
+
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wikipedia-monitor");
-    props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9092");
-    props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "zookeeper:2181");
+
+    if(System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS").equals("")) {
+      props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS"));
+    } else {
+      props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9092");
+    }
+
+    if(System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG").equals("")) {
+      props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG"));
+    } else {
+      props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "zookeeper:2181");
+    }
+
     props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://schemaregistry:8081");
     props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
