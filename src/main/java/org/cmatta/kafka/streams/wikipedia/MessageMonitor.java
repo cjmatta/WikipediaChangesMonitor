@@ -15,6 +15,9 @@ import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.cmatta.kafka.connect.irc.Message;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.IOException;
 import java.util.Properties;
 
 /**
@@ -22,29 +25,68 @@ import java.util.Properties;
  */
 public class MessageMonitor {
   public static void main(String[] args) throws Exception {
-    Properties props = new Properties();
+    Properties streamProps = new Properties();
+    Properties appProps = new Properties();
 
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wikipedia-monitor");
+    streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wikipedia-monitor");
 
-    if(System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS").equals("")) {
-      props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS"));
+    if(System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS") != null) {
+      streamProps.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS"));
     } else {
-      props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9092");
+      streamProps.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9092");
     }
 
-    if(System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG").equals("")) {
-      props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG"));
+    if(System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG") != null) {
+      streamProps.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG"));
     } else {
-      props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "zookeeper:2181");
+      streamProps.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "zookeeper:2181");
     }
 
-    props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://schemaregistry:8081");
-    props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-    props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
-    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-    props.put("consumer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor");
-    props.put("producer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor");
+    streamProps.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://schemaregistry:8081");
+    streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+    streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
+    streamProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    streamProps.put("consumer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor");
+    streamProps.put("producer.interceptor.classes", "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor");
 
+        // Override defaults with explicit input (if present)
+    String[] pNames = {StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG};
+    String pValue;
+    if (args.length > 0) {
+        System.out.println("Reading property overrides from "+args[0]);
+
+            // Known properties that we can override
+        InputStream propInputStream = null;
+
+        try {
+            propInputStream = new FileInputStream(args[0]);
+            appProps.load(propInputStream);
+
+            for (String prop : pNames) {
+                pValue=appProps.getProperty(prop);
+                if (pValue != null) {
+                    System.out.println("  Overriding "+prop+" with "+pValue);
+                    streamProps.put(prop, pValue);
+                }
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        } finally {
+            if (propInputStream != null) {
+                propInputStream.close();
+            }
+        }
+    }
+
+        // Lastly, command-line overrides (highest precedence)
+    System.out.println("Checking for command-line overrides");
+    for (String prop : pNames) {
+        pValue=System.getProperty(prop);
+        if (pValue != null) {
+            System.out.println("  Overriding "+prop+" with "+pValue);
+            streamProps.put(prop, pValue);
+        }
+    }
     KStreamBuilder builder = new KStreamBuilder();
 
     KStream<String, Message> wikipediaRaw = builder.stream("wikipedia.raw");
@@ -53,7 +95,7 @@ public class MessageMonitor {
         .filter((k, v) -> k != null && v != null).to("wikipedia.parsed");
 
 //    TODO Add KTable example code
-    final KafkaStreams streams = new KafkaStreams(builder, props);
+    final KafkaStreams streams = new KafkaStreams(builder, streamProps);
     streams.start();
 
     // Add shutdown hook to respond to SIGTERM and gracefully close Kafka Streams
