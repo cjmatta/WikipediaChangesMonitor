@@ -27,15 +27,9 @@ public class MessageMonitor {
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wikipedia-monitor");
 
     if(System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS").equals("")) {
-      props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS"));
-    } else {
       props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9092");
-    }
-
-    if(System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG").equals("")) {
-      props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, System.getenv("CHANGESMONITOR_ZOOKEEPER_CONFIG"));
     } else {
-      props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "zookeeper:2181");
+      props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, System.getenv("CHANGESMONITOR_BOOTSTRAP_SERVERS"));
     }
 
     props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://schemaregistry:8081");
